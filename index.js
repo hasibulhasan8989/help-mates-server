@@ -38,6 +38,27 @@ const beVolunteerCollection=client.db('helpMates').collection('beVolunteerCollec
     const result= await volunteerCollection.find().toArray()
     res.send(result)
   })
+
+  //search all volunteer
+  app.get('/search-volunteer',async(req,res)=>{
+    const text=req.query.text
+    let query={}
+    if(text){
+      query={post_title:{$regex:text,$options:'i'}}
+    }
+    
+    const result=await volunteerCollection.find(query).toArray()
+    res.send(result)
+  })
+
+ //sorting all volunteer
+ app.get('/deadline-volunteer',async(req,res)=>{  
+  const date =new Date().toLocaleDateString()
+  console.log(date)
+   const query={deadline : -1}
+   const result=await volunteerCollection.find().sort(query).limit(6).toArray()
+   res.send(result)
+ })
   // get all volunteer require post of a user by email
   app.get('/my-post/:email',async(req,res)=>{
     const email=req.params.email
