@@ -1,14 +1,44 @@
-const express = require('express')
-const app = express()
-const cors=require('cors')
-require('dotenv').config()
-const port = 3000
+const express = require("express");
+const app = express();
+const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
+require("dotenv").config();
+const port = 3000;
 
-app.use(cors())
-app.use(express.json())
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+  })
+);
+app.use(express.json());
+app.use(cookieParser());
 
+const verifyToken = (req, res, next) => {
+  const token = req.cookies.token;
 
-const { MongoClient, ServerApiVersion, Collection, Db, ObjectId } = require('mongodb');
+  if (!token) {
+    return res.status(401).send({ message: "Unauthorized" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.Secret);
+    req.decoded = decoded;
+
+    next();
+  } catch (error) {
+    return res.status(403).status({ message: "Invalid Token" });
+  }
+};
+
+const {
+  MongoClient,
+  ServerApiVersion,
+  Collection,
+  Db,
+  ObjectId,
+} = require("mongodb");
 const uri = `mongodb+srv://${process.env.USER}:${process.env.PASS}@cluster0.zsgh3ij.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -16,128 +46,187 @@ const client = new MongoClient(uri, {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
-  }
+  },
 });
 
-
-
 async function run() {
-    
-const volunteerCollection=client.db('helpMates').collection('volunteerCollection')
-const beVolunteerCollection=client.db('helpMates').collection('beVolunteerCollection')
+  const volunteerCollection = client
+    .db("helpMates")
+    .collection("volunteerCollection");
+  const beVolunteerCollection = client
+    .db("helpMates")
+    .collection("beVolunteerCollection");
 
   try {
- 
-  app.post('/add-volunteer',async(req,res)=>{
-    const volunteer=req.body
-    const result=await volunteerCollection.insertOne(volunteer)
-    res.send(result)
-  })
-//get all volunteer require post
-  app.get('/all-volunteer',async(req,res)=>{
-    const result= await volunteerCollection.find().toArray()
-    res.send(result)
-  })
+    app.post("/add-volunteer", async (req, res) => {
+      const volunteer = req.body;
+      const result = await volunteerCollection.insertOne(volunteer);
+      res.send(result);
+    });
+    //get all volunteer require post
+    app.get("/all-volunteer", async (req, res) => {
+      const result = await volunteerCollection.find().toArray();
+      res.send(result);
+    });
 
-  //search all volunteer
-  app.get('/search-volunteer',async(req,res)=>{
-    const text=req.query.text
-    let query={}
-    if(text){
-      query={post_title:{$regex:text,$options:'i'}}
-    }
-    
-    const result=await volunteerCollection.find(query).toArray()
-    res.send(result)
-  })
+    //volunteerCount
+    app.get("/volunteer-count", async (req, res) => {
+      const text = req.query.text;
+      console.log(text);
 
- //sorting all volunteer
- app.get('/deadline-volunteer',async(req,res)=>{  
-  const date =new Date().toLocaleDateString()
-  console.log(date)
-   const query={deadline : -1}
-   const result=await volunteerCollection.find().sort(query).limit(6).toArray()
-   res.send(result)
- })
-  // get all volunteer require post of a user by email
-  app.get('/my-post/:email',async(req,res)=>{
-    const email=req.params.email
-    const query={'organizer.email':email}
-    const result= await volunteerCollection.find(query).toArray()
-    res.send(result)
-  })
-  //delete a volunteer post
-  app.delete('/post-delete/:id',async(req,res)=>{
-    const id=req.params.id
-    const query={_id: new ObjectId(id)}
-    const result=await volunteerCollection.deleteOne(query)
-    res.send(result)
-  })
-  
-  //update a volunteer post
-  app.put('/update/:id',async(req,res)=>{
-    console.log("update Hitting")
-    const id=req.params.id
-    const volunteer=req.body
-    const query={_id: new ObjectId(id)}
-    const update={
-      $set:{
-         ...volunteer
+      let query = {};
+      if (text) {
+        query = { post_title: { $regex: text, $options: "i" } };
       }
-    }
 
-    const result=await volunteerCollection.updateOne(query,update)
-    res.send(result)
-  })
+      const result = await volunteerCollection.countDocuments(query);
 
-  //get volunteer request by user email
-  app.get('/my-request/:email',async(req,res)=>{
-    const email=req.params.email;
-    const query={"volunteer.volunteer_email":email}
-    const result=await beVolunteerCollection.find(query).toArray()
-    res.send(result)
-  })
+      res.send(result);
+    });
 
+    //search all volunteer
+    app.get("/search-volunteer", async (req, res) => {
+      const text = req.query.text;
+      const currentPage = parseInt(req.query.currentPage) - 1;
+      const itemPerPage = parseInt(req.query.itemPerPage);
 
-  app.get('/volunteer/:id',async(req,res)=>{
-    const id=req.params.id
-    const query={_id : new ObjectId(id)} 
-    const result=await volunteerCollection.findOne(query)
-    res.send(result)
-  })
+      let query = {};
+      if (text) {
+        query = { post_title: { $regex: text, $options: "i" } };
+      }
 
-  app.post('/be-volunteer',async(req,res)=>{
-    const volunteer=req.body
-    const id=req.query.id
-    const query={_id: new ObjectId(id)}
-    const update={$inc:{need_volunteer: -1}}
-    await volunteerCollection.updateOne(query,update)
-    const result=await beVolunteerCollection.insertOne(volunteer)
-    res.send(result)
-  })
-  //delete a volunteer request
-  app.delete('/request-delete/:id',async(req,res)=>{
-    const id=req.params.id;
-    const query={_id: new ObjectId(id)}
-    const result=await beVolunteerCollection.deleteOne(query)
-    res.send(query)
-  })
-    
+      const result = await volunteerCollection
+        .find(query)
+        .skip(itemPerPage * currentPage)
+        .limit(itemPerPage)
+        .toArray();
+      res.send(result);
+    });
+
+    //sorting all volunteer
+    app.get("/deadline-volunteer", async (req, res) => {
+      const date = new Date().toLocaleDateString();
+      console.log(date);
+      const query = { deadline: -1 };
+      const result = await volunteerCollection
+        .find()
+        .sort(query)
+        .limit(6)
+        .toArray();
+      res.send(result);
+    });
+    // get all volunteer require post of a user by email
+    app.get("/my-post/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { "organizer.email": email };
+      const result = await volunteerCollection.find(query).toArray();
+      res.send(result);
+    });
+    //delete a volunteer post
+    app.delete("/post-delete/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await volunteerCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    //update a volunteer post
+    app.put("/update/:id", async (req, res) => {
+      const id = req.params.id;
+      const volunteer = req.body;
+      const query = { _id: new ObjectId(id) };
+      const update = {
+        $set: {
+          ...volunteer,
+        },
+      };
+
+      const result = await volunteerCollection.updateOne(query, update);
+      res.send(result);
+    });
+
+    //get volunteer request by user email
+    //verifyTesting
+    app.get("/my-request/:email", verifyToken, async (req, res) => {
+      const decoded = req.decoded;
+      console.log(decoded);
+      const email = req.params.email;
+      if (email !== decoded.email) {
+        return res.status(403).status({ message: "Invalid Token" });
+      }
+
+      const query = { "volunteer.volunteer_email": email };
+      const result = await beVolunteerCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.get("/volunteer/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await volunteerCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.post("/be-volunteer", async (req, res) => {
+      const volunteer = req.body;
+      const id = req.query.id;
+      const query = { _id: new ObjectId(id) };
+      const update = { $inc: { need_volunteer: -1 } };
+      await volunteerCollection.updateOne(query, update);
+      const result = await beVolunteerCollection.insertOne(volunteer);
+      res.send(result);
+    });
+    //delete a volunteer request
+    app.delete("/request-delete/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+       const update = { $inc: { need_volunteer: +1 } };
+      await volunteerCollection.updateOne(query, update);
+      
+      const result = await beVolunteerCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    //jwt token
+
+    app.post("/jwt-token", (req, res) => {
+      const { email } = req.body;
+      console.log("I am hitting", email);
+      const token = jwt.sign({ email }, process.env.Secret, {
+        expiresIn: "1y",
+      });
+      res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: false,
+          sameSite: "strict",
+        })
+        .send({ message: "success" });
+    });
+
+    /// clear jwt token
+    app.post("/logout", (req, res) => {
+      console.log("hitting");
+      res.clearCookie("token", { maxAge: 0 });
+      res.send({ massage: "successful" });
+    });
+
     await client.connect();
-   
+
     await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
   } finally {
-    
     // await client.close();
   }
 }
 run().catch(console.dir);
 
-app.get('/', (req, res) => {
-  res.send('Hello World!')
-})
+app.get("/", (req, res) => {
+  res.send("Hello World!");
+});
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+  console.log(`Example app listening on port ${port}`);
+});
