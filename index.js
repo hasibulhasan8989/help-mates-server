@@ -28,7 +28,7 @@ const verifyToken = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.Secret);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.decoded = decoded;
 
     next();
@@ -203,7 +203,7 @@ async function run() {
     app.post("/jwt-token", (req, res) => {
       const { email } = req.body;
       console.log("I am hitting", email);
-      const token = jwt.sign({ email }, process.env.Secret, {
+      const token = jwt.sign({ email }, process.env.JWT_SECRET, {
         expiresIn: "1y",
       });
       res
