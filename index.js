@@ -8,10 +8,13 @@ const port = process.env.PORT || 3000;
 
 app.use(
   cors({
-    origin: ["http://localhost:5173",
-      'http://help-mates-e2b56.web.app',
-      'http://help-mates-e2b56.firebaseapp.com'],
-    credentials: true,
+    origin: [
+      "https://help-mates-e2b56.web.app",
+    "https://help-mates-e2b56.firebaseapp.com",
+    "http://localhost:5173"
+    // fallback
+    ],
+    credentials: true, // allow cookies / credentials
   })
 );
 
@@ -22,19 +25,21 @@ app.use(cookieParser());
 
 const verifyToken = (req, res, next) => {
   const token = req.cookies.token;
+  console.log("token is:", token)
+  next()
 
-  if (!token) {
-    return res.status(401).send({ message: "Unauthorized" });
-  }
+  // if (!token) {
+  //   return res.status(401).send({ message: "Unauthorized" });
+  // }
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.decoded = decoded;
+  // try {
+  //   const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  //   req.decoded = decoded;
 
-    next();
-  } catch (error) {
-    return res.status(403).send({ message: "Invalid Token" });
-  }
+  //   next();
+  // } catch (error) {
+  //   return res.status(403).send({ message: "Invalid Token" });
+  // }
 };
 
 const {
@@ -162,12 +167,13 @@ async function run() {
 
     app.get("/my-request/:email", verifyToken, async (req, res) => {
       const decoded = req.decoded;
-      console.log(decoded);
+      console.log("hi from decoded",  decoded);
       const email = req.params.email;
-      if (email !== decoded.email) {
-        return res.status(403).send({ message: "Invalid Token" });
-      }
 
+      // if (email !== decoded.email) {
+      //   return res.status(403).send({ message: "Invalid Token" });
+      // }
+      console.log(email)
       const query = { "volunteer.volunteer_email": email };
       const result = await beVolunteerCollection.find(query).toArray();
       res.send(result);
@@ -209,7 +215,7 @@ async function run() {
       res
         .cookie("token", token, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
+          secure: process.env.NODE_ENV=== production ,
           sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
         })
         .send({ message: "success" });
@@ -222,12 +228,12 @@ async function run() {
       res.send({ massage: "successful" });
     });
 
-    await client.connect();
+    // await client.connect();
 
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // await client.close();
   }
