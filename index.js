@@ -4,16 +4,21 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 require("dotenv").config();
-const port = process.env.node || 3000;
+const port = process.env.PORT || 3000;
 
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: ["http://localhost:5173",
+      'http://help-mates-e2b56.web.app',
+      'http://help-mates-e2b56.firebaseapp.com'],
     credentials: true,
   })
 );
+
 app.use(express.json());
 app.use(cookieParser());
+
+
 
 const verifyToken = (req, res, next) => {
   const token = req.cookies.token;
@@ -40,7 +45,7 @@ const {
   ObjectId,
 } = require("mongodb");
 const uri = `mongodb+srv://${process.env.USER}:${process.env.PASS}@cluster0.zsgh3ij.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -63,6 +68,8 @@ async function run() {
       const result = await volunteerCollection.insertOne(volunteer);
       res.send(result);
     });
+
+
     //get all volunteer require post
     app.get("/all-volunteer", async (req, res) => {
       const result = await volunteerCollection.find().toArray();
@@ -103,6 +110,7 @@ async function run() {
       res.send(result);
     });
 
+
     //sorting all volunteer
     app.get("/deadline-volunteer", async (req, res) => {
       const date = new Date().toLocaleDateString();
@@ -115,6 +123,8 @@ async function run() {
         .toArray();
       res.send(result);
     });
+
+
     // get all volunteer require post of a user by email
     app.get("/my-post/:email", async (req, res) => {
       const email = req.params.email;
@@ -122,6 +132,8 @@ async function run() {
       const result = await volunteerCollection.find(query).toArray();
       res.send(result);
     });
+
+
     //delete a volunteer post
     app.delete("/post-delete/:id", async (req, res) => {
       const id = req.params.id;
@@ -147,6 +159,7 @@ async function run() {
 
     //get volunteer request by user email
     //verifyTesting
+
     app.get("/my-request/:email", verifyToken, async (req, res) => {
       const decoded = req.decoded;
       console.log(decoded);
@@ -209,12 +222,12 @@ async function run() {
       res.send({ massage: "successful" });
     });
 
-    await client.connect();
+    // await client.connect();
 
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // await client.close();
   }
@@ -225,6 +238,7 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
-});
+// app.listen(port, () => {
+//   console.log(`Example app listening on port ${port}`);
+// });
+module.exports = app;
