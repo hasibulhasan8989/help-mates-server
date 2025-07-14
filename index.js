@@ -4,7 +4,7 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 require("dotenv").config();
-const port = 3000;
+const port = process.env.node || 3000;
 
 app.use(
   cors({
@@ -28,7 +28,7 @@ const verifyToken = (req, res, next) => {
 
     next();
   } catch (error) {
-    return res.status(403).status({ message: "Invalid Token" });
+    return res.status(403).send({ message: "Invalid Token" });
   }
 };
 
@@ -152,7 +152,7 @@ async function run() {
       console.log(decoded);
       const email = req.params.email;
       if (email !== decoded.email) {
-        return res.status(403).status({ message: "Invalid Token" });
+        return res.status(403).send({ message: "Invalid Token" });
       }
 
       const query = { "volunteer.volunteer_email": email };
@@ -180,9 +180,7 @@ async function run() {
     app.delete("/request-delete/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
-       const update = { $inc: { need_volunteer: +1 } };
-      await volunteerCollection.updateOne(query, update);
-      
+
       const result = await beVolunteerCollection.deleteOne(query);
       res.send(result);
     });
@@ -198,8 +196,8 @@ async function run() {
       res
         .cookie("token", token, {
           httpOnly: true,
-          secure: false,
-          sameSite: "strict",
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
         })
         .send({ message: "success" });
     });
